@@ -9,7 +9,7 @@
 #include "CUDAFunctionsBase.h"
 #include "ccl.h"
 #include "cvlabeling_imagelab.h"
-#include "utility.h"
+#include "sbla.h"
 
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
@@ -18,6 +18,54 @@
 #ifndef min
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
+
+class CPerformanceCounter 
+{
+	__int64 m_i64Frequency,m_i64Start,m_i64Stop;
+	bool m_bRunning;
+
+	double GetElapsed (double dMultiplier) 
+	{
+		double dElapsed;
+		__int64 i64Stop(m_i64Stop);
+		if (m_bRunning) 
+			QueryPerformanceCounter ((LARGE_INTEGER *)(&i64Stop));
+		dElapsed = (double)i64Stop;
+		dElapsed -= m_i64Start;
+		dElapsed *= dMultiplier;
+		dElapsed /= m_i64Frequency;
+		return dElapsed;
+	}
+
+public:
+	CPerformanceCounter () 
+	{
+		QueryPerformanceFrequency ((LARGE_INTEGER *)(&m_i64Frequency));
+		Start();
+	}
+
+	void Start () 
+	{
+		QueryPerformanceCounter ((LARGE_INTEGER *)(&m_i64Start));
+		m_i64Stop = m_i64Start;
+		m_bRunning = true;
+	}
+
+	void Stop () 
+	{
+		QueryPerformanceCounter ((LARGE_INTEGER *)(&m_i64Stop));
+		m_bRunning = false;
+	}
+
+	double GetElapsedSeconds () 
+	{
+		return GetElapsed(1);
+	}
+	double GetElapsedMilliSeconds () 
+	{
+		return GetElapsed(1000);
+	}	
+};
 
 float gpu2time;
 
@@ -186,7 +234,7 @@ int main(int argc, char** argv)
 		int iNumLabels;
 		CPerformanceCounter perf;
 		perf.Start();
-    	iNumLabels = LabelSBLA_RootUp_compact(data, srcimgb->width, srcimgb->height);
+    	iNumLabels = LabelSBLA(data, srcimgb->width, srcimgb->height);
 		elapsedMilliSeconds1 = (float)perf.GetElapsedMilliSeconds();
 		printf("cpu SBLA used %f ms, total labels %u\n", elapsedMilliSeconds1, iNumLabels);
 		free(data);
@@ -318,6 +366,9 @@ int main(int argc, char** argv)
 		if(iNumLabels > LBMAX)
 			printf("too much cc, compare abort.\n");
 		else{
+			//create a error
+			//cpures[5] = 12;
+			//cpures[15] = 18;
 			printf("Checking correctness of gpu alg1\nChecking gpu ref by cpu.\n");
 			checkLabels(cpures, gpures, nwidth/2, cvGetSize(srcimgb).height/2, iNumLabels);
 
