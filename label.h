@@ -20,3 +20,5 @@ typedef unsigned short ushort;
 extern void label_512(CudaBuffer* pt, CudaBuffer* pt2, CudaBuffer* ps, CudaBuffer* b, CudaBuffer* b2, CudaBuffer* glabel, uint h, uint bn, CudaBuffer* eb);
 extern void label_1024(CudaBuffer* pt, CudaBuffer* pt2, CudaBuffer* ps, CudaBuffer* b, CudaBuffer* b2, CudaBuffer* glabel, uint h, uint bn, CudaBuffer* eb);
 extern void label_2048(CudaBuffer* pt, CudaBuffer* pt2, CudaBuffer* ps, CudaBuffer* b, CudaBuffer* b2, CudaBuffer* glabel, uint h, uint bn, CudaBuffer* eb);
+
+extern void label_zhl(CudaBuffer* pt, CudaBuffer* pt2, CudaBuffer* ps, CudaBuffer* b, CudaBuffer* b2, CudaBuffer* glabel, uint h, uint bn, CudaBuffer* eb);

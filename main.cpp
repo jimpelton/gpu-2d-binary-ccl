@@ -289,8 +289,10 @@ int main(int argc, char** argv)
 	
 	if(nwidth == 512)
 		label_512(&dstBuf, &dstBuf2, &srcBuf, &bBuf, &b2Buf, &glabel, nheight, bn, &errBuf);
-	else if(nwidth == 1024)
+	else if(nwidth == 1024){
 		label_1024(&dstBuf, &dstBuf2, &srcBuf, &bBuf, &b2Buf, &glabel, nheight, bn, &errBuf);
+//		label_zhl(&dstBuf, &dstBuf2, &srcBuf, &bBuf, &b2Buf, &glabel, nheight, bn, &errBuf);
+	}
 	else if(nwidth == 2048)
 		label_2048(&dstBuf, &dstBuf2, &srcBuf, &bBuf, &b2Buf, &glabel, nheight, bn, &errBuf);
 
