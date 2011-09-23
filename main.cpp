@@ -1,7 +1,8 @@
 // Host code
 #include <stdio.h>
 
-#include <cutil_inline.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 #include "opencv\highgui.h"
 #include "opencv\cv.h"
 #include <math.h>
@@ -10,6 +11,9 @@
 #include "ccl.h"
 #include "cvlabeling_imagelab.h"
 #include "sbla.h"
+
+#define cutilSafeCall(x) x
+
 
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
@@ -297,7 +301,7 @@ int main(int argc, char** argv)
 		label_2048(&dstBuf, &dstBuf2, &srcBuf, &bBuf, &b2Buf, &glabel, nheight, bn, &errBuf);
 
     cutilSafeCall( cudaEventRecord( stop, 0 ) );
-	cutilCheckMsg("kernel launch failure");
+//	cutilCheckMsg("kernel launch failure");
 	cudaEventSynchronize(stop);
 	cutilSafeCall( cudaEventElapsedTime( &elapsedTimeInMs, start, stop ) );
 	uint tlabel = 0;
