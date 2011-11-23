@@ -233,10 +233,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\labelzhl.cu"
-				>
-			</File>
-			<File
 				RelativePath="..\main.cpp"
 				>
 			</File>
