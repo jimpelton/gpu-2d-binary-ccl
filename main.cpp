@@ -85,6 +85,7 @@ void boundCheck(IplImage *img){
 	}
 }
 
+//this function is used to cross check the correctness of two label results
 bool checkLabels(ushort* ref0, ushort* ref1, ushort width, uint height, ushort tlabels)
 {
 	ushort *tt;
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
 	bool invbk = 0;
 	if(argc < 3){
 		printf("Not enough args!\narg1: target image\narg2: source image\narg3: do source image adaptive threshold or not\narg4: invert back ground or not\n");
-//		getchar();
+		getchar();
 		return 1;
 	}
 	if(argc >= 4){
@@ -154,11 +155,12 @@ int main(int argc, char** argv)
 	if (!srcimg)
 	{
 		printf("src img %s load failed!\n", argv[2]);
-//		getchar();
+		getchar();
 		return 1;
 	}
 	
-	int bn = 8;
+	//choosing the parameters for our ccl
+	int bn = 8; //how many partitions
 	int nwidth = 512;
 	if(srcimg->width > 512){
 		nwidth = 1024;
@@ -170,9 +172,11 @@ int main(int argc, char** argv)
 	}
 	if(srcimg->width > 2048){
 		printf("warning, image too wide, max support 2048. image is truncated.\n");
-//		return 1;
+		getchar();
+		return 1;
 	}
-
+	
+	//start selection gpu devices
 	int devCount;
 	int smCnt = 0;
     cudaGetDeviceCount(&devCount);
@@ -191,9 +195,10 @@ int main(int argc, char** argv)
     }
 	
 	if(smCnt == 0){
+		//our ccl require CUDA cap 2.0 or above, but the Ostava's ccl can be run on any CUDA gpu
 		printf("Error, no device with cap 2.x found. Only cpu alg will be run.\n");
-//		getchar();
-//		return 1;
+		getchar();
+		return 1;
 	}
 	
 	if(smCnt != 0){
@@ -224,11 +229,12 @@ int main(int argc, char** argv)
 	boundCheck(srcimgb);
 
 	cvScale(srcimgb, srcimgb2, 255);
+	//the source binary image to be labeled is saved as bsrc.bmp
 	cvSaveImage("bsrc.bmp", srcimgb2);
 	cvSet(srcimgb2, cvScalar(0,0,0));
 	
 	float elapsedMilliSeconds1;
-	{
+	{//begin cpu labeling algorithm, the SBLA proposed by Zhao
 		LABELDATATYPE *data=(LABELDATATYPE *)malloc(srcimgb->width * srcimgb->height * sizeof(LABELDATATYPE));
 	
 		for(int j = 0; j<srcimgb->height; j++)
@@ -247,7 +253,7 @@ int main(int argc, char** argv)
 	IplImage *src2(0),*dst2(0);
 	int iNumLabels;
 	float elapsedMilliSeconds2;
-	{
+	{//begin cpu labeling algorithm, the BBDT proposed by C. Grana, D. Borghesani, R. Cucchiara
 		CPerformanceCounter perf;
 		src2 = cvCreateImage( cvGetSize(srcimgb), IPL_DEPTH_8U, 1 );
 		cvCopyImage(srcimgb,src2);
@@ -270,15 +276,15 @@ int main(int argc, char** argv)
 //    cvNamedWindow("src",CV_WINDOW_AUTOSIZE);
 //	cvShowImage("src",srcimg);
 
-
+	//prepare buffers for our gpu algorithm
 	CudaBuffer srcBuf, dstBuf, dstBuf2, bBuf, b2Buf, errBuf, glabel;
-	srcBuf.Create2D(nwidth, nheight);
-	dstBuf.Create2D(nwidth, (nheight-2)/2);//(nheight-2)/2
-	dstBuf2.Create2D(nwidth,(nheight-2)/2);//(nheight-2)/2
-	glabel.Create2D(4, 1);
-	errBuf.Create2D(nwidth, 9*bn);
-	bBuf.Create2D(nwidth, 2 * bn);
-	b2Buf.Create2D(nwidth, 2 * bn);
+	srcBuf.Create2D(nwidth, nheight);		//the binary image to be processed
+	dstBuf.Create2D(nwidth, (nheight-2)/2); //the label result, only about 1/4 the size of source image contains the final labels
+	dstBuf2.Create2D(nwidth,(nheight-2)/2);	//a copy of the pass1 temp result, for debug purpose
+	glabel.Create2D(4, 1);					//a int size global buffer for unique final label
+	errBuf.Create2D(nwidth, 9*bn);			//a buffer for debug info
+	bBuf.Create2D(nwidth, 2 * bn);			//the intersection info used by pass2
+	b2Buf.Create2D(nwidth, 2 * bn);			//a copy of bBuf for debug purpose
 
 	srcBuf.SetZeroData();
 	srcBuf.CopyFrom(srcimgb->imageData, srcimgb->widthStep, nwidth, cvGetSize(srcimgb).height);
@@ -316,11 +322,12 @@ int main(int argc, char** argv)
 //	cvNamedWindow("gpu",CV_WINDOW_AUTOSIZE);
 //	cvShowImage("gpu",srcimgb);
 	cvSaveImage(argv[1], srcimgb);
-	cvSaveImage("gpu2.bmp", srcimgb2);
+	cvSaveImage("gpu2.bmp", srcimgb2);	//the final labels of our algorithm
 	cvSaveImage("bug.bmp", bugimg);
 	cvSaveImage("b.bmp", bimg);
 	cvSaveImage("b2.bmp", b2img);
-
+	
+	//now start the gpu ccl implemented by Ostava
 	alg2dst= cvCreateImage(cvSize(nwidth*4, cvGetSize(srcimgb).height),IPL_DEPTH_8U,1);
 	CCLBase* m_ccl;
 	m_ccl = new CCL();	
@@ -337,13 +344,15 @@ int main(int argc, char** argv)
 //	}
 	//cvWaitKey(0);
 	
+	//now start cross compare label results of our ccl and the BBDT, to check the correctness
 //	if(smCnt != 0){
 		ushort *gpures, *cpures;
 		uint sz = nwidth * (cvGetSize(srcimgb).height/2);
 		gpures = (ushort*)malloc(sz);
 		cpures = (ushort*)malloc(sz);
 		dstBuf.CopyToHost(gpures, nwidth, nwidth, (cvGetSize(srcimgb).height/2));
-
+		
+		//first, reduce cpu labels from one label for each pixel to one label for a 2x2 block, assuming 8-connectivity
 		for(int j = 0; j < (cvGetSize(srcimgb).height/2); j++)
 			for(int i = 0; i < (nwidth/2); i++){
 				uint* cpup;
@@ -367,6 +376,7 @@ int main(int argc, char** argv)
 				cpures[i + j*(nwidth/2)] = res;
 			}
 		
+		//our algo use unsigned short to represent a label, the first label starts a 0, and maximun labels is LBMAX
 		if(iNumLabels > LBMAX)
 			printf("too much cc, compare abort.\n");
 		else{
