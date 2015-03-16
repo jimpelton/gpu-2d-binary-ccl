@@ -1,0 +1,5 @@
+The fastest gpu ccl implementation by september 2011. Test results show that our ccl implementation is 2x to 5x faster than Ostava's implementation published on GPU Gems Emerald Chapter 35. Our full source code is online right now, see downloads and source area. Our paper is also published, see links area. Some code included in this project came from other authors where our code license don't apply. See external links for detail of those algorithms.
+
+Note: you must have a nvidia GPU card with CUDA cap 2.0 or above to run my algorithm, Ostava's algorithm can be run on any CUDA capable card. Please restrict the registers used to achieve 100% occupancy for best performance.
+
+BSD license only for this CUDA implementation (detailed in our paper). Other ccl algorithms included in the project have different license.
